@@ -20,9 +20,9 @@ along with GCC; see the file COPYING3.  If not see
 import math
 import os
 import sys
-from typing import List
-from typing import Callable
-from optparse import OptionParser
+import argparse
+from typing import List, Callable, Sequence
+
 
 __version__ = '0.0.1'
 
@@ -36,7 +36,7 @@ MASK_SOURCE = (1 << SOURCE_BIT_WIDTH) - 1
 MASK_TARGET = (1 << TARGET_BIT_WIDTH) - 1
 
 
-def chunks(l, n: int) -> List:
+def chunks(l: Sequence[int], n: int) -> List:
     for i in range(0, len(l), n):
         yield l[i:i+n]
 
@@ -51,7 +51,8 @@ def encode(src: str) -> str:
         for n in chunk:
             num = (num << SOURCE_BIT_WIDTH) | n
         for i in range(TARGET_TO_SOURCE_SLICE_WIDTH):
-            array_target.append((num >> ((TARGET_TO_SOURCE_SLICE_WIDTH - 1 - i) * TARGET_BIT_WIDTH)) & MASK_TARGET)
+            array_target.append(
+                (num >> ((TARGET_TO_SOURCE_SLICE_WIDTH - 1 - i) * TARGET_BIT_WIDTH)) & MASK_TARGET)
     return ''.join([SYMBOLS[i] for i in array_target])
 
 
@@ -63,65 +64,68 @@ def decode(src: str) -> str:
         for n in chunk:
             num = (num << TARGET_BIT_WIDTH) | n
         for i in range(5):
-            array_source.append((num >> (SOURCE_TO_TARGET_SLICE_WIDTH - 1 - i) * SOURCE_BIT_WIDTH) & MASK_SOURCE)
+            array_source.append(
+                (num >> (SOURCE_TO_TARGET_SLICE_WIDTH - 1 - i) * SOURCE_BIT_WIDTH) & MASK_SOURCE)
     while array_source[-1] == 0:
         array_source.pop()
     return str(bytearray(array_source), encoding="utf-8")
 
 
-def transform_dir_name(dir_path: str, unary_op: Callable[[str], str]) -> None:
-    pass
-
-
-def transform_file_name(file_path: str, unary_op: Callable[[str], str]) -> None:
-    abs_path = os.path.abspath(file_path)
-    if not os.path.isfile(abs_path):
-        raise FileNotFoundError(file_path)
+def transform_name(path: str, unary_op: Callable[[str], str]) -> None:
+    abs_path = os.path.abspath(path)
+    if not os.path.exists(abs_path):
+        raise FileNotFoundError(path)
     dir_name = os.path.dirname(abs_path)
-    file_name = os.path.basename(abs_path)
+    base_name = os.path.basename(abs_path)
 
-    transformed_file_name = unary_op(file_name)
-    os.rename(os.path.join(dir_name, file_name), os.path.join(dir_name, transformed_file_name))
+    transformed_base_name = unary_op(base_name)
+    os.rename(os.path.join(dir_name, base_name), os.path.join(dir_name, transformed_base_name))
 
 
 def transform(root_dir: str, unary_op: Callable[[str], str]) -> None:
+    dir_list = []
     list_dirs = os.walk(root_dir)
     for root, dirs, files in list_dirs:
         for d in dirs:
-            transform_dir_name(os.path.join(root, d), unary_op)
+            dir_list.append(os.path.join(root, d))
         for f in files:
-            transform_file_name(os.path.join(root, f), unary_op)
+            transform_name(os.path.join(root, f), unary_op)
+    for d in reversed(dir_list):
+        transform_name(d, unary_op)
 
 
 if __name__ == '__main__':
-    parser = OptionParser(usage="usage: %prog [options] arg1 arg2")
-    parser.add_option("-e", "--encode", action="store_true", dest="encode", default=False, help="Encode the files' name")
-    parser.add_option("-d", "--decode", action="store_true", dest="decode", default=False, help="Decode the files' name")
-    (options, args) = parser.parse_args()
+    parser = argparse.ArgumentParser(prog="rename1k",
+                        description="使用base1k对文件名进行编/解码")
+    parser.add_argument("-e", "--encode", action="store_true", dest="encode",
+                        default=False, help="对文件名进行编码操作")
+    parser.add_argument("-d", "--decode", action="store_true", dest="decode",
+                        default=False, help="对文件名进行解码操作")
+    parser.add_argument('list', metavar='T', type=str, nargs='+',
+                        help='将要被处理的文件或文件夹')
+    args = parser.parse_args()
 
-    if options.encode and options.decode:
-        print("Error: 这样的操作做不到啊", options)
+    if args.encode and args.decode:
+        print("Error: 这样的操作做不到啊", args)
         sys.exit(1)
 
-    if len(args) == 0:
-        if options.encode or options.decode:
+    if not args.list:
+        if args.encode or args.decode:
             print("Error: 请提供所需编/解码的文件/文件夹")
             sys.exit(1)
         else:
-            parser.print_help()
+            args.print_help()
             sys.exit(0)
 
-    operation = decode
-    if options.encode:
-        operation = encode
+    operation = encode if args.encode else decode
 
     try:
-        for arg in args:
+        for arg in args.list:
             if os.path.isfile(arg):
-                transform_file_name(arg, operation)
+                transform_name(arg, operation)
             else:
                 transform(arg, operation)
+                transform_name(arg, operation)
     except ValueError as error:
         print("Error: 源文件名并未被编码")
         sys.exit(1)
-
