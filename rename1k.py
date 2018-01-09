@@ -71,10 +71,31 @@ def decode(src: str) -> str:
     return str(bytearray(array_source), encoding="utf-8")
 
 
-def transform_name(path: str, unary_op: Callable[[str], str]) -> None:
+def is_encoded(path: str) -> bool:
     abs_path = os.path.abspath(path)
     if not os.path.exists(abs_path):
         raise FileNotFoundError(path)
+    base_name = os.path.basename(abs_path)
+    for c in base_name:
+        if SYMBOLS.find(c) == -1:
+            return False
+    return True
+
+
+def transform_name(path: str, unary_op: Callable[[str], str]) -> None:
+    def skip(file_path: str) -> bool:
+        if is_encoded(file_path):
+            if unary_op == encode:
+                return True
+        else:
+            if unary_op == decode:
+                return True
+        return False
+    abs_path = os.path.abspath(path)
+    if not os.path.exists(abs_path):
+        raise FileNotFoundError(path)
+    if skip(abs_path):
+        return
     dir_name = os.path.dirname(abs_path)
     base_name = os.path.basename(abs_path)
 
@@ -92,6 +113,7 @@ def transform(root_dir: str, unary_op: Callable[[str], str]) -> None:
             transform_name(os.path.join(root, f), unary_op)
     for d in reversed(dir_list):
         transform_name(d, unary_op)
+
 
 
 if __name__ == '__main__':
