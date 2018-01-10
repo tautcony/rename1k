@@ -63,7 +63,7 @@ def decode(src: str) -> str:
         num = 0
         for n in chunk:
             num = (num << TARGET_BIT_WIDTH) | n
-        for i in range(5):
+        for i in range(SOURCE_TO_TARGET_SLICE_WIDTH):
             array_source.append(
                 (num >> (SOURCE_TO_TARGET_SLICE_WIDTH - 1 - i) * SOURCE_BIT_WIDTH) & MASK_SOURCE)
     while array_source[-1] == 0:
