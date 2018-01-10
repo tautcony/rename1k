@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 rename1k
@@ -21,7 +21,7 @@ import math
 import os
 import sys
 import argparse
-from typing import List, Callable, Sequence
+from typing import Callable, Sequence
 
 
 __version__ = '0.0.1'
@@ -36,13 +36,13 @@ MASK_SOURCE = (1 << SOURCE_BIT_WIDTH) - 1
 MASK_TARGET = (1 << TARGET_BIT_WIDTH) - 1
 
 
-def chunks(l: Sequence[int], n: int) -> List:
+def chunks(l: Sequence[int], n: int) -> Sequence[int]:
     for i in range(0, len(l), n):
         yield l[i:i+n]
 
 
 def encode(src: str) -> str:
-    array_source = bytearray(src, encoding="utf-8")
+    array_source = bytearray(src, "utf-8")
     while len(array_source) % SOURCE_TO_TARGET_SLICE_WIDTH != 0:
         array_source.append(0)
     array_target = []
@@ -68,13 +68,12 @@ def decode(src: str) -> str:
                 (num >> (SOURCE_TO_TARGET_SLICE_WIDTH - 1 - i) * SOURCE_BIT_WIDTH) & MASK_SOURCE)
     while array_source[-1] == 0:
         array_source.pop()
-    return str(bytearray(array_source), encoding="utf-8")
+    return str(bytearray(array_source), "utf-8")
 
 
-def is_encoded(path: str) -> bool:
-    abs_path = os.path.abspath(path)
+def is_encoded(abs_path: str) -> bool:
     if not os.path.exists(abs_path):
-        raise FileNotFoundError(path)
+        raise FileNotFoundError(abs_path)
     base_name = os.path.basename(abs_path)
     for c in base_name:
         if SYMBOLS.find(c) == -1:
@@ -83,8 +82,8 @@ def is_encoded(path: str) -> bool:
 
 
 def transform_name(path: str, unary_op: Callable[[str], str]) -> None:
-    def skip(file_path: str) -> bool:
-        if is_encoded(file_path):
+    def skip(abs_path: str) -> bool:
+        if is_encoded(abs_path):
             if unary_op == encode:
                 return True
         else:
@@ -92,8 +91,6 @@ def transform_name(path: str, unary_op: Callable[[str], str]) -> None:
                 return True
         return False
     abs_path = os.path.abspath(path)
-    if not os.path.exists(abs_path):
-        raise FileNotFoundError(path)
     if skip(abs_path):
         return
     dir_name = os.path.dirname(abs_path)
@@ -115,10 +112,9 @@ def transform(root_dir: str, unary_op: Callable[[str], str]) -> None:
         transform_name(d, unary_op)
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="rename1k",
-                        description="使用base1k对文件名进行编/解码")
+                        description="使用base1k对文件名进行编/解码，默认操作为解码")
     parser.add_argument("-e", "--encode", action="store_true", dest="encode",
                         default=False, help="对文件名进行编码操作")
     parser.add_argument("-d", "--decode", action="store_true", dest="decode",
