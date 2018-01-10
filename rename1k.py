@@ -81,7 +81,7 @@ def is_encoded(abs_path: str) -> bool:
     return True
 
 
-def transform_name(path: str, unary_op: Callable[[str], str]) -> None:
+def transform_name(path: str, unary_op: Callable[[str], str], force: bool) -> None:
     def skip(abs_path: str) -> bool:
         if is_encoded(abs_path):
             if unary_op == encode:
@@ -91,7 +91,7 @@ def transform_name(path: str, unary_op: Callable[[str], str]) -> None:
                 return True
         return False
     abs_path = os.path.abspath(path)
-    if skip(abs_path):
+    if not force and skip(abs_path):
         return
     dir_name = os.path.dirname(abs_path)
     base_name = os.path.basename(abs_path)
@@ -100,16 +100,16 @@ def transform_name(path: str, unary_op: Callable[[str], str]) -> None:
     os.rename(os.path.join(dir_name, base_name), os.path.join(dir_name, transformed_base_name))
 
 
-def transform(root_dir: str, unary_op: Callable[[str], str]) -> None:
+def transform(root_dir: str, unary_op: Callable[[str], str], force: bool) -> None:
     dir_list = []
     list_dirs = os.walk(root_dir)
     for root, dirs, files in list_dirs:
         for d in dirs:
             dir_list.append(os.path.join(root, d))
         for f in files:
-            transform_name(os.path.join(root, f), unary_op)
+            transform_name(os.path.join(root, f), unary_op, force)
     for d in reversed(dir_list):
-        transform_name(d, unary_op)
+        transform_name(d, unary_op, force)
 
 
 if __name__ == "__main__":
@@ -119,6 +119,8 @@ if __name__ == "__main__":
                         default=False, help="对文件名进行编码操作")
     parser.add_argument("-d", "--decode", action="store_true", dest="decode",
                         default=False, help="对文件名进行解码操作")
+    parser.add_argument("-f", "--force", action="store_true", dest="force",
+                        default=False, help="强制进行解码操作")
     parser.add_argument('list', metavar='T', type=str, nargs='+',
                         help='将要被处理的文件或文件夹')
     args = parser.parse_args()
@@ -140,10 +142,10 @@ if __name__ == "__main__":
     try:
         for arg in args.list:
             if os.path.isfile(arg):
-                transform_name(arg, operation)
+                transform_name(arg, operation, args.force)
             else:
-                transform(arg, operation)
-                transform_name(arg, operation)
+                transform(arg, operation, args.force)
+                transform_name(arg, operation, args.force)
     except ValueError as error:
         print("Error: 源文件名并未被编码")
         sys.exit(1)
