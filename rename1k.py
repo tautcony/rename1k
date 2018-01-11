@@ -17,9 +17,10 @@ You should have received a copy of the GNU General Public License
 along with rename1k; see the file LICENSE.  If not see
 <http://www.gnu.org/licenses/>.
 """
-import math
 import os
 import sys
+import math
+import zlib
 import argparse
 from typing import Callable, Sequence
 
@@ -42,7 +43,7 @@ def chunks(l: Sequence[int], n: int) -> Sequence[int]:
 
 
 def encode(src: str) -> str:
-    array_source = bytearray(src, "utf-8")
+    array_source = list(zlib.compress(bytearray(src, "utf-8")))
     while len(array_source) % SOURCE_TO_TARGET_SLICE_WIDTH != 0:
         array_source.append(0)
     array_target = []
@@ -68,7 +69,7 @@ def decode(src: str) -> str:
                 (num >> (SOURCE_TO_TARGET_SLICE_WIDTH - 1 - i) * SOURCE_BIT_WIDTH) & MASK_SOURCE)
     while array_source[-1] == 0:
         array_source.pop()
-    return str(bytearray(array_source), "utf-8")
+    return str(zlib.decompress(bytearray(array_source)), "utf-8")
 
 
 def is_encoded(abs_path: str) -> bool:
