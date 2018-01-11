@@ -43,7 +43,13 @@ def chunks(l: Sequence[int], n: int) -> Sequence[int]:
 
 
 def encode(src: str) -> str:
-    array_source = list(zlib.compress(bytearray(src, "utf-8")))
+    def encode_avoid_trailing_zero(src):
+        ret = zlib.compress(bytearray(src, "utf-8"))
+        while ret[-1] == 0:
+            src = src + ' '
+            ret = zlib.compress(bytearray(src, "utf-8"))
+        return ret
+    array_source = list(encode_avoid_trailing_zero(src))
     while len(array_source) % SOURCE_TO_TARGET_SLICE_WIDTH != 0:
         array_source.append(0)
     array_target = []
@@ -69,7 +75,7 @@ def decode(src: str) -> str:
                 (num >> (SOURCE_TO_TARGET_SLICE_WIDTH - 1 - i) * SOURCE_BIT_WIDTH) & MASK_SOURCE)
     while array_source[-1] == 0:
         array_source.pop()
-    return str(zlib.decompress(bytearray(array_source)), "utf-8")
+    return str(zlib.decompress(bytearray(array_source)), "utf-8").rstrip()
 
 
 def is_encoded(abs_path: str) -> bool:
