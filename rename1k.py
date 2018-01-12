@@ -37,17 +37,17 @@ MASK_SOURCE = (1 << SOURCE_BIT_WIDTH) - 1
 MASK_TARGET = (1 << TARGET_BIT_WIDTH) - 1
 
 
-def chunks(l: Sequence[int], n: int) -> Sequence[int]:
+def chunks(l: Sequence[int], n: int) -> Sequence[Sequence[int]]:
     for i in range(0, len(l), n):
         yield l[i:i+n]
 
 
 def encode(src: str) -> str:
-    def encode_avoid_trailing_zero(src):
-        ret = zlib.compress(bytearray(src, "utf-8"))
+    def encode_avoid_trailing_zero(inner_src):
+        ret = zlib.compress(bytearray(inner_src, "utf-8"), 9)
         while ret[-1] == 0:
-            src = src + ' '
-            ret = zlib.compress(bytearray(src, "utf-8"))
+            inner_src = inner_src + ' '
+            ret = zlib.compress(bytearray(inner_src, "utf-8"))
         return ret
     array_source = list(encode_avoid_trailing_zero(src))
     while len(array_source) % SOURCE_TO_TARGET_SLICE_WIDTH != 0:
@@ -89,8 +89,8 @@ def is_encoded(abs_path: str) -> bool:
 
 
 def transform_name(path: str, unary_op: Callable[[str], str], force: bool) -> None:
-    def skip(abs_path: str) -> bool:
-        if is_encoded(abs_path):
+    def skip(inner_abs_path: str) -> bool:
+        if is_encoded(inner_abs_path):
             if unary_op == encode:
                 return True
         else:
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--decode", action="store_true", dest="decode",
                         default=False, help="对文件名进行解码操作")
     parser.add_argument("-f", "--force", action="store_true", dest="force",
-                        default=False, help="强制进行解码操作")
+                        default=False, help="强制进行编/解码操作")
     parser.add_argument('list', metavar='T', type=str, nargs='+',
                         help='将要被处理的文件或文件夹')
     args = parser.parse_args()
